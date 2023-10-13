@@ -5,6 +5,7 @@
         <Nullable>enable</Nullable>
         <ImplicitUsings>enable</ImplicitUsings>
         <PublishRelease>true</PublishRelease>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <!-- Force 32-bit so we can find old voices as well -->
         <PlatformTarget>x86</PlatformTarget>
     </PropertyGroup>
