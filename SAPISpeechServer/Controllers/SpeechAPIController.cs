@@ -12,14 +12,32 @@ namespace SAPISpeechServer.Controllers
         public IEnumerable<String> GetVoices()
         {
             SpVoice voice = new SpVoice();
-            var voiceNames = new string[voice.GetVoices().Count];
+            ISpeechObjectTokens voices = voice.GetVoices();
+            var voiceNames = new List<String>();
 
-            for (int i = 0; i < voiceNames.Length; i++)
+            for (int i = 0; i < voices.Count; i++)
             {
-                SpObjectToken token = voice.GetVoices().Item(i);
-                string name = token.GetAttribute("Name");
-                string vendor = token.GetAttribute("Vendor");
-                voiceNames[i] = $"{vendor}/{name}";
+                SpObjectToken token = voices.Item(i);
+                try
+                {
+                    string name = token.GetAttribute("Name");
+                    string vendor = token.GetAttribute("Vendor");
+                    voiceNames.Add($"{vendor}/{name}");
+                    Console.WriteLine("Voice: " + voiceNames.Last());
+                }
+                catch (COMException e)
+                {
+                    var error = DecodeSpeechApiError(e);
+                    Console.Write($"Failed to retrieve voice info for index {i}/{voices.Count}: ");
+                    if (error != null)
+                    {
+                        Console.WriteLine(error);
+                    }
+                    else
+                    {
+                        Console.WriteLine(e.Message);
+                    }
+                }
             }
 
             return voiceNames;
