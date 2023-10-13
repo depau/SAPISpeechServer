@@ -1,19 +1,28 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.ComponentModel.DataAnnotations;
+using System.Runtime.InteropServices;
+using System.Security;
+using System.Text;
 using Microsoft.AspNetCore.Mvc;
 using Interop.SpeechLib;
 
 namespace SAPISpeechServer.Controllers
 {
+    public enum VoiceGender
+    {
+        Male,
+        Female,
+    }
+
     [ApiController]
     [Route("api/speech")]
     public class SpeechApiController : ControllerBase
     {
         [HttpGet("voices")]
-        public IEnumerable<String> GetVoices()
+        public IEnumerable<VoiceDetails> GetVoices()
         {
             SpVoice voice = new SpVoice();
             ISpeechObjectTokens voices = voice.GetVoices();
-            var voiceNames = new List<String>();
+            var voiceDetails = new List<VoiceDetails>();
 
             for (int i = 0; i < voices.Count; i++)
             {
@@ -22,8 +31,11 @@ namespace SAPISpeechServer.Controllers
                 {
                     string name = token.GetAttribute("Name");
                     string vendor = token.GetAttribute("Vendor");
-                    voiceNames.Add($"{vendor}/{name}");
-                    Console.WriteLine("Voice: " + voiceNames.Last());
+                    string language = GetLanguageName(token.GetAttribute("Language"));
+                    string gender = token.GetAttribute("Gender");
+                    voiceDetails.Add(new VoiceDetails
+                        { Name = name, Vendor = vendor, Gender = gender, Language = language });
+                    Console.WriteLine("Voice: " + voiceDetails.Last());
                 }
                 catch (COMException e)
                 {
@@ -40,11 +52,12 @@ namespace SAPISpeechServer.Controllers
                 }
             }
 
-            return voiceNames;
+            return voiceDetails;
         }
 
-        [HttpGet("speak/{voiceVendor}/{voiceName}")]
-        public IActionResult Speak(string voiceVendor, string voiceName, string text)
+        [HttpGet("speak/")]
+        public IActionResult Speak(string text, string? vendor = null, string? name = null, string? lang = null,
+            VoiceGender? gender = null)
         {
             SpVoice voice = new SpVoice();
             SpMemoryStream memoryStream = new SpMemoryStreamClass();
@@ -52,20 +65,50 @@ namespace SAPISpeechServer.Controllers
             memoryStream.Format.Type = SpeechAudioFormatType.SAFT48kHz16BitMono;
 
             // Find the voice
-            ISpeechObjectTokens voices = voice.GetVoices($"Name={voiceName};Vendor={voiceVendor}", string.Empty);
-            if (voices.Count == 0)
+            var requiredAttributes = new List<string>();
+            if (vendor != null) requiredAttributes.Add($"Vendor={vendor}");
+            if (name != null) requiredAttributes.Add($"Name={name}");
+            if (lang != null)
             {
-                return NotFound();
+                try
+                {
+                    var lcid = GetLanguageId(lang);
+                    requiredAttributes.Add($"Language={lcid}");
+                }
+                catch (ArgumentException e)
+                {
+                    return BadRequest("Invalid language code");
+                }
             }
 
-            voice.Voice = voices.Item(0);
+            switch (gender)
+            {
+                case VoiceGender.Female:
+                    requiredAttributes.Add("Gender=Female");
+                    break;
+                case VoiceGender.Male:
+                    requiredAttributes.Add("Gender=Male");
+                    break;
+            }
+
+            if (requiredAttributes.Count > 0)
+            {
+                var attributes = string.Join(";", requiredAttributes);
+
+                ISpeechObjectTokens voices = voice.GetVoices(attributes, string.Empty);
+                if (voices.Count == 0)
+                    return NotFound();
+
+                voice.Voice = voices.Item(0);
+            }
 
             // Speak it as WAV to memory
             voice.AudioOutputStream = memoryStream;
             try
             {
                 // ReSharper disable once BitwiseOperatorOnEnumWithoutFlags
-                voice.Speak(text, SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
+                voice.Speak(text,
+                    SpeechVoiceSpeakFlags.SVSFlagsAsync | SpeechVoiceSpeakFlags.SVSFPurgeBeforeSpeak);
                 voice.WaitUntilDone(3000);
             }
             catch (COMException e)
@@ -113,6 +156,30 @@ namespace SAPISpeechServer.Controllers
 
                 return memStream.ToArray();
             }
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern uint LocaleNameToLCID(string lpName, uint dwFlags);
+
+        private static string GetLanguageId(string localeName)
+        {
+            var lcid = LocaleNameToLCID(localeName, 0);
+            return lcid.ToString("X");
+        }
+
+        [DllImport("kernel32.dll", SetLastError = true, CharSet = CharSet.Unicode)]
+        private static extern int LCIDToLocaleName(uint locale, [Out] StringBuilder lpName, int cchName, uint dwFlags);
+
+        private static string GetLanguageName(string lcid)
+        {
+            if (lcid.Contains(";")) lcid = lcid.Split(";").First();
+            var lcidInt = Convert.ToInt32(lcid, 16);
+
+            var sb = new StringBuilder(85);
+            var result = LCIDToLocaleName((uint)lcidInt, sb, sb.Capacity, 0);
+            if (result == 0)
+                throw new ArgumentException($"Invalid LCID: {lcid}");
+            return sb.ToString();
         }
 
         private string? DecodeSpeechApiError(COMException e)
