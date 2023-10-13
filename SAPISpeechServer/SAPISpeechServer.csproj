@@ -1,0 +1,31 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <ImplicitUsings>enable</ImplicitUsings>
+        <!-- Force 32-bit so we can find old voices as well -->
+        <PlatformTarget>x86</PlatformTarget>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0"/>
+    </ItemGroup>
+	
+    <!--
+        Interop.SpeechLib.dll has been generated on Windows from the Visual Studio PowerShell via:
+        tlbimp.exe C:\Windows\System32\Speech\Common\sapi.dll /out:libs\Interop.SpeechLib.dll
+    -->
+    <ItemGroup>
+        <Reference Include="Interop.SpeechLib">
+            <HintPath>libs\Interop.SpeechLib.dll</HintPath>
+            <Private>True</Private>
+        </Reference>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="libs\Interop.SpeechLib.dll">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+</Project>
