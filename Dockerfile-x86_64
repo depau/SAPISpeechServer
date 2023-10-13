@@ -1,0 +1,48 @@
+FROM bitnami/dotnet-sdk:6 AS builder
+
+COPY SAPISpeechServer/ /project
+WORKDIR /project
+
+RUN DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    dotnet publish --runtime win-x86 -c Release -o /bin
+
+###############################################
+MAINTAINER Davide Depau <davide@depau.eu>
+FROM scottyhardy/docker-wine:stable-8.0.2
+
+EXPOSE 5000
+
+ARG TINI_VERSION=v0.19.0
+ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
+RUN chmod +x /tini && \
+    export DPKG_FRONTEND=noninteractive && \
+    apt-get update && \
+    apt-get install -y x11-utils 
+
+ENV WINEARCH=win32 \
+    XVFB_SCREEN=0 \
+    XVFB_RESOLUTION="320x240x8" \
+    DISPLAY=":95"
+
+RUN useradd -m -d /home/wineuser -s /bin/bash --uid 1000 wineuser && \
+    mkdir /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix
+USER wineuser
+
+RUN --mount=type=cache,uid=1000,target=/home/wineuser/.cache \
+    /usr/bin/Xvfb "$DISPLAY" -screen "$XVFB_SCREEN" "$XVFB_RESOLUTION" -ac -nolisten tcp & \
+    xvfb_pid=$! && \
+    while ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; do \
+      echo "$(date) - Waiting for Xvfb..."; \
+      sleep 0.5; \
+    done && \
+    winetricks unattended win10 nocrashdialog dotnet6 speechsdk && \
+    winetricks win10 && \
+    kill $xvfb_pid && \
+    rm -rf /tmp/.X*-lock
+
+COPY --from=builder /bin/ /bin/
+COPY docker_entrypoint.sh /entrypoint.sh
+
+ENTRYPOINT ["/tini", "--", "/entrypoint.sh", "wine", "/bin/SAPISpeechServer.exe"]
+CMD ["--urls", "http://0.0.0.0:5000"]
