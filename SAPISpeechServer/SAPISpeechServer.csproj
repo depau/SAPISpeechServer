@@ -11,7 +11,7 @@
     <ItemGroup>
         <PackageReference Include="Swashbuckle.AspNetCore" Version="6.5.0"/>
     </ItemGroup>
-	
+
     <!--
         Interop.SpeechLib.dll has been generated on Windows from the Visual Studio PowerShell via:
         tlbimp.exe C:\Windows\System32\Speech\Common\sapi.dll /out:libs\Interop.SpeechLib.dll
