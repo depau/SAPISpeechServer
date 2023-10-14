@@ -14,6 +14,10 @@ latest successful GitHub Actions build.
 1. Visit https://github.com/depau/SAPISpeechServer/actions/workflows/dotnet.yml
 2. Click on the latest successful build
 3. Scroll down to the "Artifacts" section and download the `SAPISpeechServer` file
+4. Launch `SAPISpeechServer.exe`
+    - To run it on a different port, run `SAPISpeechServer.exe --urls http://localhost:5000` from the command line
+
+It should automatically detect all 32-bit voices. For 64-bit voices you'll need to rebuild it from source.
 
 ### Linux Docker image
 
