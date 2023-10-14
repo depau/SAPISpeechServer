@@ -34,7 +34,6 @@ public class SpeechApiController : ControllerBase
     /// </summary>
     /// <returns>The list of voices</returns>
     [HttpGet("voices")]
-    [Produces("audio/wav")]
     public IEnumerable<VoiceDetails> GetVoices()
     {
         var voice = new SpVoice();
