@@ -19,18 +19,25 @@ RUN apk add curl squashfs-tools jq && \
 
 ###################################################
 FROM ubuntu:22.04
+
+ARG ARM_VERSION=auto
+
 ARG DEBIAN_FRONTEND=noninteractive
 ENV WINEARCH=win32 \
     XVFB_SCREEN=0 \
     XVFB_RESOLUTION="320x240x8" \
     DISPLAY=":95"
 
+COPY scripts/get_arm_version.py /usr/bin/get_arm_version.py
 COPY scripts/get_fex_pkgname.py /usr/bin/get_fex_pkgname.py
 
 RUN apt-get update && \
     apt-get install -y software-properties-gtk python3 xvfb x11-utils curl xz-utils x11-apps imagemagick && \
     add-apt-repository -y ppa:fex-emu/fex && \
-    apt-get install -y "$(python3 /usr/bin/get_fex_pkgname.py)" && \
+    if [[ "$ARM_VERSION" == "auto" ]]; then \
+      ARM_VERSION="$(python3 /usr/bin/get_arm_version.py)"; \
+    fi && \
+    apt-get install -y "$(python3 /usr/bin/get_fex_pkgname.py $ARM_VERSION)" && \
     useradd -m -d /home/wineuser -s /bin/bash --uid 1000 wineuser && \
     mkdir /tmp/.X11-unix && \
     chmod 1777 /tmp/.X11-unix && \
