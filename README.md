@@ -78,18 +78,22 @@ It's easy to add more voices by creating a downstream image. Here's an example:
 FROM ghcr.io/depau/sapispeechserver:main
 
 COPY Setup.exe /tmp/Setup.exe
+COPY Setup.msi /tmp/Setup.msi
 
-# InnoSetup
-RUN source auto_xvfb &&\
-    wine /tmp/Setup.exe /VERYSILENT /SUPPRESSMSGBOXES \
-
-# MSI
 RUN source auto_xvfb && \
+    # InnoSetup
+    wine /tmp/Setup.exe /VERYSILENT /SUPPRESSMSGBOXES && \
+    # MSI
     wine msiexec /qn /i /tmp/Setup.msi
 ```
 
-What's not easy is figuring out how to make the installer silent. The above examples work
-respectively with InnoSetup installers and with MSI packages. For other installers I suggest
-you use Ghidra to figure out what they're based on,
-then [ask ChatGPT](https://chat.openai.com/share/7dbd1778-3e9d-4fbb-8520-ad23c2f9146f).
+```bash
+docker buildx build --pull -t sapiserver_withvoices .
+```
+
+What's not so easy is figuring out how to make the installer silent. The above examples work
+respectively with InnoSetup installers and with MSI packages.
+
+For other installers I suggest you use Ghidra to figure out what they're based on, then
+[ask ChatGPT](https://chat.openai.com/share/7dbd1778-3e9d-4fbb-8520-ad23c2f9146f).
 
