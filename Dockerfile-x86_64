@@ -15,7 +15,7 @@ EXPOSE 5000
 ARG TINI_VERSION=v0.19.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini && \
-    export DPKG_FRONTEND=noninteractive && \
+    export DEBIAN_FRONTEND=noninteractive && \
     apt-get update && \
     apt-get install -y x11-utils
 
@@ -29,6 +29,7 @@ RUN useradd -m -d /home/wineuser -s /bin/bash --uid 1000 wineuser && \
     chmod 1777 /tmp/.X11-unix && \
     # Avoid abusing archive.org's bandwidth for speechsdk
     sed -e 's|https://web.archive.org/web/20110805062427/||g' \
+        -e 's|https://web.archive.org/web/2000/https://web.archive.org/web/20110805062427/||g' \
         -e 's|520aa5d1a72dc6f41dc9b8b88603228ffd5d5d6f696224fc237ec4828fe7f6e0|826ba6df0d38d29560250dc697a0cb53cd57817db1b39c575ee0f31ba78386ba|g' \
         -i $(which winetricks) && \
     # Make sure the next Dockerfile RUN statement uses bash \
