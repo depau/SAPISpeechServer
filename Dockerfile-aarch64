@@ -54,7 +54,6 @@ RUN apt-get update && \
 
 USER wineuser
 
-COPY --from=squashfs-extractor --chown=1000:1000 /Ubuntu_22_04.sqsh /home/wineuser/.fex-emu/RootFS/Ubuntu_22_04.sqsh
 COPY --from=squashfs-extractor --chown=1000:1000 /squashfs /home/wineuser/.fex-emu/RootFS/Ubuntu_22_04
 
 RUN echo '{"Config":{"RootFS":"Ubuntu_22_04"}}' > /home/wineuser/.fex-emu/Config.json && \
