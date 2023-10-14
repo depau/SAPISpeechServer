@@ -47,5 +47,5 @@ RUN --mount=type=cache,uid=1000,target=/home/wineuser/.cache \
 
 COPY --from=builder /app/ /app/
 
-ENTRYPOINT ["/tini", "--", "/usr/bin/entrypoint", "wine", "/bin/SAPISpeechServer.exe"]
+ENTRYPOINT ["/tini", "--", "/usr/bin/entrypoint", "wine", "/app/SAPISpeechServer.exe"]
 CMD ["--urls", "http://0.0.0.0:5000"]
