@@ -26,7 +26,9 @@ ENV WINEARCH=win32 \
 
 RUN useradd -m -d /home/wineuser -s /bin/bash --uid 1000 wineuser && \
     mkdir /tmp/.X11-unix && \
-    chmod 1777 /tmp/.X11-unix
+    chmod 1777 /tmp/.X11-unix && \
+    # Avoid abusing archive.org's bandwidth for speechsdk
+    sed -i 's|https://web.archive.org/web/20110805062427/||g' $(which winetricks)
 USER wineuser
 
 RUN --mount=type=cache,uid=1000,target=/home/wineuser/.cache \
