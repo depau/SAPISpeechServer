@@ -1,0 +1,78 @@
+FROM bitnami/dotnet-sdk:6 AS builder
+
+COPY SAPISpeechServer/ /project
+WORKDIR /project
+
+RUN DOTNET_CLI_TELEMETRY_OPTOUT=1 \
+    dotnet publish --runtime win-x86 -c Release -o /app
+
+
+###################################################
+FROM alpine:3.18 AS squashfs-extractor
+
+RUN apk add curl squashfs-tools jq && \
+    URL="$(curl https://rootfs.fex-emu.gg/RootFS_links.json | jq -r '.v1["Ubuntu 22.04 (SquashFS)"].URL')" && \
+    curl "$URL" > /Ubuntu_22_04.sqsh && \
+    unsquashfs -f -d /squashfs /Ubuntu_22_04.sqsh && \
+    rm -f /squashfs/usr/bin/curl  # speed up downloads ;)
+
+
+###################################################
+FROM ubuntu:22.04
+ARG DEBIAN_FRONTEND=noninteractive
+ENV WINEARCH=win32 \
+    XVFB_SCREEN=0 \
+    XVFB_RESOLUTION="320x240x8" \
+    DISPLAY=":95"
+
+COPY scripts/get_fex_pkgname.py /usr/bin/get_fex_pkgname.py
+
+RUN apt-get update && \
+    apt-get install -y software-properties-gtk python3 xvfb x11-utils curl xz-utils x11-apps imagemagick && \
+    add-apt-repository -y ppa:fex-emu/fex && \
+    apt-get install -y "$(python3 /usr/bin/get_fex_pkgname.py)" && \
+    useradd -m -d /home/wineuser -s /bin/bash --uid 1000 wineuser && \
+    mkdir /tmp/.X11-unix && \
+    chmod 1777 /tmp/.X11-unix && \
+    curl -L "https://raw.githubusercontent.com/Winetricks/winetricks/master/src/winetricks" > /usr/bin/winetricks && \
+    chmod +x /usr/bin/winetricks && \
+    sed -e 's|https://web.archive.org/web/20110805062427/||g' \
+        -e 's|https://web.archive.org/web/2000/https://web.archive.org/web/20110805062427/||g' \
+        -e 's|520aa5d1a72dc6f41dc9b8b88603228ffd5d5d6f696224fc237ec4828fe7f6e0|826ba6df0d38d29560250dc697a0cb53cd57817db1b39c575ee0f31ba78386ba|g' \
+        -i $(which winetricks) && \
+    mv /bin/sh /bin/sh.old && \
+    ln -s /bin/bash /bin/sh
+
+USER wineuser
+
+COPY --from=squashfs-extractor --chown=1000:1000 /Ubuntu_22_04.sqsh /home/wineuser/.fex-emu/RootFS/Ubuntu_22_04.sqsh
+COPY --from=squashfs-extractor --chown=1000:1000 /squashfs /home/wineuser/.fex-emu/RootFS/Ubuntu_22_04
+
+RUN echo '{"Config":{"RootFS":"Ubuntu_22_04"}}' > /home/wineuser/.fex-emu/Config.json && \
+    FEXInterpreter /usr/bin/uname -a  # Try it out
+
+COPY scripts/auto_xvfb.sh /usr/bin/auto_xvfb
+COPY scripts/docker_entrypoint.sh /usr/bin/entrypoint
+
+RUN cd && \
+    curl -L "https://github.com/Kron4ek/Wine-Builds/releases/download/8.17/wine-8.17-x86.tar.xz" | tar -xJ && \
+    mkdir wine-8.17-x86/share/mono && \
+    curl -L "https://dl.winehq.org/wine/wine-mono/8.0.0/wine-mono-8.0.0-x86.tar.xz" | tar -xJ -C wine-8.17-x86/share/mono && \
+    mkdir wine-wrappers && \
+    for i in $(ls wine-8.17-x86/bin); do \
+        echo -e '#!/bin/bash\nexec FEXInterpreter '"$HOME/wine-8.17-x86/bin/$i"' "$@"' > "wine-wrappers/$i" && \
+        chmod +x wine-wrappers; \
+    done
+
+ENV PATH=/home/wineuser/wine-wrappers:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
+
+COPY --from=builder /app/ /app/
+
+RUN --mount=type=cache,uid=1000,target=/home/wineuser/.cache \
+    source auto_xvfb && \
+    winetricks unattended win10 nocrashdialog dotnet6 speechsdk win10 && \
+    rm -rf /tmp/winetricks*
+
+ENTRYPOINT ["/tini", "--", "/usr/bin/entrypoint", "wine", "/app/SAPISpeechServer.exe"]
+CMD ["--urls", "http://0.0.0.0:5000"]
+
