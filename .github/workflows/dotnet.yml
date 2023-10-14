@@ -32,9 +32,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - name: Fixup project for AOT
-        run: -|
-          sed -i 's|net6.0|net8.0|g' SAPISpeechServer/SAPISpeechServer/SAPISpeechServer.csproj
-          sed -i 's|</TargetFramework>|</TargetFramework><PublishAot>true</PublishAot>|g' SAPISpeechServer/SAPISpeechServer/SAPISpeechServer.csproj
+        run: |-
+          sed -i 's|net6.0|net8.0|g' SAPISpeechServer/SAPISpeechServer.csproj
+          sed -i 's|</TargetFramework>|</TargetFramework><PublishAot>true</PublishAot>|g' SAPISpeechServer/SAPISpeechServer.csproj
       - name: Setup .NET
         uses: actions/setup-dotnet@v3
         with:
