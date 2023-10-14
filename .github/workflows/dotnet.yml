@@ -8,9 +8,7 @@ on:
 
 jobs:
   build:
-
     runs-on: ubuntu-latest
-
     steps:
     - uses: actions/checkout@v3
     - name: Setup .NET
@@ -28,3 +26,27 @@ jobs:
       with:
         name: SAPISpeechServer
         path: sapi_speech_server-bin/
+
+  win_build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v3
+      - name: Fixup project for AOT
+        run: -|
+          sed -i 's|net6.0|net8.0|g' SAPISpeechServer/SAPISpeechServer/SAPISpeechServer.csproj
+          sed -i 's|</TargetFramework>|</TargetFramework><PublishAot>true</PublishAot>|g' SAPISpeechServer/SAPISpeechServer/SAPISpeechServer.csproj
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: 8.0.x
+      - name: Restore dependencies
+        run: dotnet restore
+      - name: Build
+        run: dotnet build --no-restore
+      - name: Publish
+        run: dotnet publish --runtime win-x86 -c Release -o sapi_speech_server-bin
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v3.1.3
+        with:
+          name: SAPISpeechServer-AOT
+          path: sapi_speech_server-bin/
