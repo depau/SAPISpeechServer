@@ -17,7 +17,7 @@ ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini /tini
 RUN chmod +x /tini && \
     export DPKG_FRONTEND=noninteractive && \
     apt-get update && \
-    apt-get install -y x11-utils 
+    apt-get install -y x11-utils
 
 ENV WINEARCH=win32 \
     XVFB_SCREEN=0 \
@@ -28,23 +28,24 @@ RUN useradd -m -d /home/wineuser -s /bin/bash --uid 1000 wineuser && \
     mkdir /tmp/.X11-unix && \
     chmod 1777 /tmp/.X11-unix && \
     # Avoid abusing archive.org's bandwidth for speechsdk
-    sed -i 's|https://web.archive.org/web/20110805062427/||g' $(which winetricks)
+    sed -e 's|https://web.archive.org/web/20110805062427/||g' \
+        -e 's|520aa5d1a72dc6f41dc9b8b88603228ffd5d5d6f696224fc237ec4828fe7f6e0|826ba6df0d38d29560250dc697a0cb53cd57817db1b39c575ee0f31ba78386ba|g' \
+        -i $(which winetricks) && \
+    # Make sure the next Dockerfile RUN statement uses bash
+    rm -f /bin/sh && \
+    ln -s /bin/bash /bin/sh
 USER wineuser
 
+COPY scripts/auto_xvfb.sh /usr/bin/auto_xvfb
+COPY scripts/docker_entrypoint.sh /usr/bin/entrypoint
+
 RUN --mount=type=cache,uid=1000,target=/home/wineuser/.cache \
-    /usr/bin/Xvfb "$DISPLAY" -screen "$XVFB_SCREEN" "$XVFB_RESOLUTION" -ac -nolisten tcp & \
-    xvfb_pid=$! && \
-    while ! xdpyinfo -display "$DISPLAY" >/dev/null 2>&1; do \
-      echo "$(date) - Waiting for Xvfb..."; \
-      sleep 0.5; \
-    done && \
+    source auto_xvfb && \
     winetricks unattended win10 nocrashdialog dotnet6 speechsdk && \
     winetricks win10 && \
-    kill $xvfb_pid && \
-    rm -rf /tmp/.X*-lock
+    rm -rf /tmp/winetricks*
 
 COPY --from=builder /bin/ /bin/
-COPY docker_entrypoint.sh /entrypoint.sh
 
-ENTRYPOINT ["/tini", "--", "/entrypoint.sh", "wine", "/bin/SAPISpeechServer.exe"]
+ENTRYPOINT ["/tini", "--", "/usr/bin/entrypoint", "wine", "/bin/SAPISpeechServer.exe"]
 CMD ["--urls", "http://0.0.0.0:5000"]
