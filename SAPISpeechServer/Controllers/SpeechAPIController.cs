@@ -1,4 +1,5 @@
-﻿using System.Runtime.InteropServices;
+﻿using System.Net.Mime;
+using System.Runtime.InteropServices;
 using System.Text;
 using Interop.SpeechLib;
 using Microsoft.AspNetCore.Mvc;
@@ -33,6 +34,7 @@ public class SpeechApiController : ControllerBase
     /// </summary>
     /// <returns>The list of voices</returns>
     [HttpGet("voices")]
+    [Produces("audio/wav")]
     public IEnumerable<VoiceDetails> GetVoices()
     {
         var voice = new SpVoice();
@@ -76,7 +78,43 @@ public class SpeechApiController : ControllerBase
     /// <param name="gender">The gender of the voice to use (optional)</param>
     /// <returns>The spoken audio WAV file</returns>
     [HttpGet("speak/")]
-    public IActionResult Speak(string text, string? vendor = null, string? name = null, string? lang = null,
+    public IActionResult SpeakQueryParam(
+        [FromQuery] string text,
+        [FromQuery] string? vendor = null,
+        [FromQuery] string? name = null,
+        [FromQuery] string? lang = null,
+        [FromQuery] VoiceGender? gender = null)
+    {
+        return Speak(text, vendor, name, lang, gender);
+    }
+
+    /// <summary>
+    ///    Speaks the text provided in the request body and returns the audio as a WAV file.
+    /// </summary>
+    /// <param name="vendor"></param>
+    /// <param name="name"></param>
+    /// <param name="lang"></param>
+    /// <param name="gender"></param>
+    /// <returns></returns>
+    [HttpPost("speak/")]
+    [Consumes("text/plain")]
+    [Produces("audio/wav")]
+    public async Task<IActionResult> SpeakRequestBody(
+        [FromQuery] string? vendor = null,
+        [FromQuery] string? name = null,
+        [FromQuery] string? lang = null,
+        [FromQuery] VoiceGender? gender = null)
+    {
+        using var reader = new StreamReader(Request.Body, Encoding.UTF8);
+        var text = await reader.ReadToEndAsync();
+        return Speak(text, vendor, name, lang, gender);
+    }
+
+    private IActionResult Speak(
+        string text,
+        string? vendor = null,
+        string? name = null,
+        string? lang = null,
         VoiceGender? gender = null)
     {
         var voice = new SpVoice();
@@ -143,6 +181,7 @@ public class SpeechApiController : ControllerBase
 
         return File(wavData, "audio/wav");
     }
+
 
     private static byte[] CreateWavData(byte[] audioData, SpWaveFormatEx audioFormat)
     {
