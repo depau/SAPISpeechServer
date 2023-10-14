@@ -61,7 +61,7 @@ RUN cd && \
     mkdir wine-wrappers && \
     for i in $(ls wine-8.17-x86/bin); do \
         echo -e '#!/bin/bash\nexec FEXInterpreter '"$HOME/wine-8.17-x86/bin/$i"' "$@"' > "wine-wrappers/$i" && \
-        chmod +x wine-wrappers; \
+        chmod +x "wine-wrappers/$i"; \
     done
 
 ENV PATH=/home/wineuser/wine-wrappers:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin
@@ -75,4 +75,3 @@ RUN --mount=type=cache,uid=1000,target=/home/wineuser/.cache \
 
 ENTRYPOINT ["/tini", "--", "/usr/bin/entrypoint", "wine", "/app/SAPISpeechServer.exe"]
 CMD ["--urls", "http://0.0.0.0:5000"]
-
