@@ -56,8 +56,8 @@ COPY scripts/docker_entrypoint.sh /usr/bin/entrypoint
 
 RUN cd && \
     curl -L "https://github.com/Kron4ek/Wine-Builds/releases/download/8.17/wine-8.17-x86.tar.xz" | tar -xJ && \
-    mkdir wine-8.17-x86/share/mono && \
-    curl -L "https://dl.winehq.org/wine/wine-mono/8.0.0/wine-mono-8.0.0-x86.tar.xz" | tar -xJ -C wine-8.17-x86/share/mono && \
+    mkdir wine-8.17-x86/share/wine/mono && \
+    curl -L "https://dl.winehq.org/wine/wine-mono/8.0.0/wine-mono-8.0.0-x86.tar.xz" | tar -xJ -C wine-8.17-x86/share/wine/mono && \
     mkdir wine-wrappers && \
     for i in $(ls wine-8.17-x86/bin); do \
         echo -e '#!/bin/bash\nexec FEXInterpreter '"$HOME/wine-8.17-x86/bin/$i"' "$@"' > "wine-wrappers/$i" && \
