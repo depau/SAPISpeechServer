@@ -31,9 +31,9 @@ RUN useradd -m -d /home/wineuser -s /bin/bash --uid 1000 wineuser && \
     sed -e 's|https://web.archive.org/web/20110805062427/||g' \
         -e 's|520aa5d1a72dc6f41dc9b8b88603228ffd5d5d6f696224fc237ec4828fe7f6e0|826ba6df0d38d29560250dc697a0cb53cd57817db1b39c575ee0f31ba78386ba|g' \
         -i $(which winetricks) && \
-    # Make sure the next Dockerfile RUN statement uses bash
-    rm -f /bin/sh && \
-    ln -s /bin/bash /bin/sh
+    # Make sure the next Dockerfile RUN statement uses bash \
+    mv /bin/sh /bin/sh.old && \
+    cp /bin/bash /bin/sh
 USER wineuser
 
 COPY scripts/auto_xvfb.sh /usr/bin/auto_xvfb
