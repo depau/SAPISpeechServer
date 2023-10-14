@@ -17,11 +17,39 @@ latest successful GitHub Actions build.
 
 ### Linux Docker image
 
-Currently this only works on x86_64, I'll see if I manage to get it to work on ARM64.
+Images are available for both x86_64 and ARM64.
+
+The images are quite large: ~4.7GB for x86_64 and ~6.7GB for ARM64. This is because they include Wine and all the
+dependencies.
+
+#### Intel/AMD x86_64
 
 ```bash
-docker run --rm -it -p 127.0.0.1:5000:5000 ghcr.io/depau/sapispeechserver:main
+docker run --rm -it -p 127.0.0.1:5000:5000 ghcr.io/depau/sapispeechserver
 ```
+
+#### ARM64
+
+The main image also works on ARM64:
+
+```bash
+docker run --rm -it -p 127.0.0.1:5000:5000 ghcr.io/depau/sapispeechserver
+```
+
+ARM64 images use the [FEX-Emu](https://fex-emu.com/) emulator to run Wine. It will be significantly slower than x86_64.
+
+To hopefully improve the performance you can obtain an image for your specific architecture.
+
+Run the `get_arm_version.py` script to detect your architecture and download the appropriate image.
+
+```bash
+$ ./scripts/get_arm_version.py
+8.3
+$ docker run --rm -it -p 127.0.0.1:5000:5000 ghcr.io/depau/sapispeechserver:armv8.3
+```
+
+ARMv8.4 images are currently not available because I lack the hardware to build them. If you have an ARMv8.4 device, use
+the `armv8.3` image.
 
 ## Usage and documentation
 
@@ -66,8 +94,19 @@ bin\Release\net6.0\win-x86\publish\SAPISpeechServer.exe --urls http://localhost:
 
 You need to use BuildX:
 
+#### Intel/AMD x86_64
+
 ```bash
 docker buildx build -f Dockerfile-x86_64 -t sapispeechserver .
+```
+
+#### ARM64
+
+Replace `XXX` with the desired ARM version (e.g. `8.3`), or use the default (`auto`) to automatically detect the
+version based on the CPU features of the host machine.
+
+```bash
+docker buildx build -f Dockerfile-aarch64 --build-arg ARM_VERSION=XXX -t sapispeechserver .
 ```
 
 ### Adding more voices to the Docker image
@@ -75,7 +114,7 @@ docker buildx build -f Dockerfile-x86_64 -t sapispeechserver .
 It's easy to add more voices by creating a downstream image. Here's an example:
 
 ```Dockerfile
-FROM ghcr.io/depau/sapispeechserver:main
+FROM ghcr.io/depau/sapispeechserver
 
 COPY Setup.exe /tmp/Setup.exe
 COPY Setup.msi /tmp/Setup.msi
@@ -93,6 +132,8 @@ RUN source auto_xvfb && \
 ```bash
 docker buildx build --pull -t sapiserver_withvoices .
 ```
+
+The procedure is the same for both Intel and ARM64 images; just use a different base image tag if needed.
 
 What's not so easy is figuring out how to make the installer silent. The above examples work
 respectively with InnoSetup installers and with MSI packages.
