@@ -84,7 +84,10 @@ RUN source auto_xvfb && \
     # InnoSetup
     wine /tmp/Setup.exe /VERYSILENT /SUPPRESSMSGBOXES && \
     # MSI
-    wine msiexec /qn /i /tmp/Setup.msi
+    wine msiexec /qn /i /tmp/Setup.msi && \
+    # Wait for Wine to shut down
+    echo "Waiting for all Windows tasks to complete..." && \
+    wineserver -w
 ```
 
 ```bash
