@@ -10,6 +10,8 @@ RUN DOTNET_CLI_TELEMETRY_OPTOUT=1 \
 ###################################################
 FROM alpine:3.18 AS squashfs-extractor
 
+# Use a dedicated container to extract the squashfs image since the Ubuntu
+# unsquashfs seems to glitch out on some machines.
 RUN apk add curl squashfs-tools jq && \
     URL="$(curl https://rootfs.fex-emu.gg/RootFS_links.json | jq -r '.v1["Ubuntu 22.04 (SquashFS)"].URL')" && \
     curl "$URL" > /Ubuntu_22_04.sqsh && \
